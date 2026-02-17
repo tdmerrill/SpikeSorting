@@ -11,6 +11,7 @@ import sys
 import traceback
 import subprocess, json
 
+from signals import signals
 
 def excepthook(type, value, tb):
     traceback.print_exception(type, value, tb)
@@ -48,6 +49,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         # self.populate_files()
 
         self.myfuncs =  MyFunctions()
+        self.brainRegionComboBox.addItems(['NCM', 'Field L', 'HVC', 'Area X', 'CM'])
+        self.myfuncs.update_neuron_list()
 
         # self.sortButton.clicked.connect(self.sort_button_clicked)
 
@@ -77,7 +80,42 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.treeViewHVC.itemClicked.connect(self.clicked)
         self.treeViewAreaX.itemClicked.connect(self.clicked)
 
+        self.brainRegionComboBox.currentIndexChanged.connect(self.myfuncs.update_neuron_list)
+        self.singleUnitCheckBox.stateChanged.connect(self.myfuncs.update_neuron_list)
+        self.neuronsList.itemDoubleClicked.connect(self.neuron_clicked)
+
+        self.frPlotButton.clicked.connect(self.plot_FR)
+        self.driftPlotButton.clicked.connect(self.plot_drift)
+        self.widthPlotButton.clicked.connect(self.plot_spike_width)
+
+        self.labelButton.clicked.connect(self.myfuncs.curate_responses)
+
         # ===== SIGNALS =====
+        signals.get_neuron_filters.connect(self.get_neuron_filters)
+        signals.send_recordings.connect(self.populate_recordings)
+
+    def plot_spike_width(self):
+        single_units = self.singleUnitCheckBox.isChecked()
+        self.myfuncs.plot_spike_width(single_units)
+
+    def plot_FR(self):
+        single_units = self.singleUnitCheckBox.isChecked()
+        self.myfuncs.plot_FR(single_units)
+
+    def plot_drift(self):
+        single_units = self.singleUnitCheckBox.isChecked()
+        self.myfuncs.plot_drift(single_units)
+
+    def populate_recordings(self, recordings):
+        self.neuronsList.clear()
+        for rec_name in recordings:
+            self.neuronsList.addItem(rec_name)
+
+    def get_neuron_filters(self):
+        brain_region = self.brainRegionComboBox.currentText()
+        single_units = self.singleUnitCheckBox.isChecked()
+
+        signals.send_neuron_filters.emit(brain_region, single_units)
 
     def get_item_color(self, path):
         color = 0
@@ -133,6 +171,11 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         path = item.data(0, Qt.UserRole)
         if path:
             self.myfuncs.file_clicked(path)
+
+    def neuron_clicked(self, item):
+        t = item.text()
+        if t:
+            self.myfuncs.neuron_clicked(t)
 if __name__ == '__main__':
     try:
         app = QtWidgets.QApplication(sys.argv)

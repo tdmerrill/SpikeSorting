@@ -18,7 +18,7 @@ import threading
 
 from signals import signals
 
-class MyFunctions():
+class MyFunctions:
     def __init__(self):
         print("initializing my functions")
 
@@ -36,6 +36,38 @@ class MyFunctions():
             ]
         p = subprocess.Popen(cmd)
 
+    def label_brain_area(self, isi_cutoff=1):
+        # --- get non-isi violation units ---
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        cursor.execute('''
+                       SELECT id, session_id, unit_id
+                       FROM neurons
+                       WHERE manual_isi_1 < ?
+                         AND spike_width_pp IS NOT NULL
+                         AND spike_width_hw IS NOT NULL
+                         AND label = ?
+                       ''', (1, 'auditory'))
+        n = cursor.fetchall()
+        conn.close()
+
+        if len(n) > 0:
+            tabs = {}
+            for id, session_id, unit_id in n:
+                bird_id = session_id.split(' ')[0]
+                if bird_id not in tabs.keys():
+                    tabs[bird_id] = {}
+                if session_id not in tabs[bird_id].keys():
+                    tabs[bird_id][session_id] = []
+                tabs[bird_id][session_id].append(f'neuron_{unit_id}')
+
+            with open("neurons_to_label.json", "w") as f:
+                json.dump(tabs, f)
+
+            subprocess.Popen(["streamlit", "run", r"C:\Users\tmerri03\PycharmProjects\SpikeSorting\GUI\label_brain_area.py"])
+
+        else:
+            print('no neurons found!')
 
     def plot_spike_width(self, single_units, isi_cutoff=1):
         areas = ['NCM', 'Field L', 'Area X', 'HVC', 'CM']
@@ -283,6 +315,63 @@ class MyFunctions():
 
         conn.close()
 
+        self.add_manual_isi()
+
+    def add_manual_isi(self):
+        print("adding manual isi where it's missing!")
+        db_path = r"C:\Users\tmerri03\Desktop\Temp Neural Files\neurons.db"
+        con = sqlite3.connect(db_path)
+        cur = con.cursor()
+
+        cur.execute('''
+                    SELECT id, session_id, unit_id, spike_file
+                    FROM neurons
+                    WHERE (
+                        manual_isi_0_7 IS NULL
+                            OR manual_isi_1 IS NULL
+                            OR manual_isi_1_5 IS NULL
+                        )
+                      AND spike_file IS NOT NULL
+                    ''')
+        neurons = cur.fetchall()
+
+        if len(neurons) == 0:
+            print("No neurons found")
+        else:
+            for n, neuron in enumerate(neurons):
+                id = neuron[0]
+                session_id = neuron[1]
+                unit_id = neuron[2]
+                spike_file = neuron[3]
+
+                print(f'working on neuron {n + 1}/{len(neurons)}')
+
+                data_dict = {}
+                with h5py.File(spike_file, "r") as f:
+                    for key in f.keys():
+                        data_dict[key] = f[key][:]
+
+                spikes = np.array(data_dict[f'unit_{unit_id}']) / 30000
+                isi = np.array(np.diff(spikes))
+                violation_rate_1_5 = len(isi[isi < 1.5 / 1000]) / len(spikes) * 100
+                violation_rate_1 = len(isi[isi < 1 / 1000]) / len(spikes) * 100
+                violation_rate_0_7 = len(isi[isi < 0.7 / 1000]) / len(spikes) * 100
+
+                cur.execute(
+                    '''
+                    UPDATE neurons
+                    SET manual_isi_1_5 = ?,
+                        manual_isi_1   = ?,
+                        manual_isi_0_7 = ?
+                    WHERE id = ?
+                      AND session_id = ?
+                      AND unit_id = ?
+                    ''',
+                    (violation_rate_1_5, violation_rate_1, violation_rate_0_7, id, session_id, unit_id)
+                )
+        con.commit()
+        con.close()
+
     def search_probe(self, path):
         if 'P1' in path:
             probe = "ASSY-37-P-1"
@@ -290,8 +379,12 @@ class MyFunctions():
             probe = "ASSY-37-H4"
         elif 'H6b' in path:
             probe = "ASSY-37-H6b"
-        elif 'E1' in path:
-            probe = "ASSY-1-E-1"
+        # elif 'E1_1' in path:
+        #     probe = "ASSY-1-E-1"
+        elif 'E1_2' in path or 'E1' in path:
+            probe = "ASSY-37-E-1"
+        elif 'H7' in path:
+            probe = "ASSY-37-H7b"
         else:
             probe = None
 

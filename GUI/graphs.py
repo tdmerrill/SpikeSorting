@@ -189,7 +189,7 @@ if __name__ == '__main__':
             if not os.path.exists(os.path.join(bird_rasters_path, brain_area)):
                 os.makedirs(os.path.join(bird_rasters_path, brain_area))
 
-            plt.savefig(fr"R:\Data\RhythmPerception\Neural Recordings\Raster Plots\{bird_id}\{brain_area}\{bird_id}_{brain_area}_rec{rec_num}_{s}.png")
+            plt.savefig(fr"R:\Data\RhythmPerception\Neural Recordings\Raster Plots\{bird_id}\{brain_area}\{bird_id}_{brain_area}_rec{rec_num}_{stim}.png")
         else:
             print("no neurons to show.")
     print("done plotting data.")
@@ -218,10 +218,28 @@ if os.path.exists(os.path.join(temp_neural_files_path, recording_name)):
         clean_sorting = sc.apply_curation(sorting_TDC, curation_dict_or_model=curation)
         print("     applying curation...")
         analyzer = sc.apply_curation(analyzer_TDC, curation_dict_or_model=curation)
+
+        if not analyzer.has_recording():
+            print("     recording missing from analyzer — reattaching")
+
+            analyzer = si.create_sorting_analyzer(
+                sorting=analyzer.sorting,
+                recording=recording,
+                folder=analyzer_path,
+                format="binary_folder",
+                overwrite=True
+            )
+
     else:
         print("     no manual curation has been found.")
         analyzer = analyzer_TDC
 
+    if analyzer.get_extension('random_spikes') is None:
+        analyzer.compute('random_spikes')
+    if analyzer.get_extension('waveforms') is None:
+        analyzer.compute('waveforms')
+    if analyzer.get_extension('templates') is None:
+        analyzer.compute('templates')
     if analyzer.get_extension("spike_locations") is None:
         analyzer.compute("spike_locations")
     if analyzer.get_extension("unit_locations") is None:

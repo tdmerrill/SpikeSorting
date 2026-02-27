@@ -48,8 +48,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
         # self.populate_files()
 
-        self.myfuncs =  MyFunctions()
-        self.brainRegionComboBox.addItems(['NCM', 'Field L', 'HVC', 'Area X', 'CM'])
+        self.myfuncs = MyFunctions()
+        self.brainRegionComboBox.addItems(['NCM', 'Field L', 'HVC', 'Area X', 'CM', 'Angle'])
         self.myfuncs.update_neuron_list()
 
         # self.sortButton.clicked.connect(self.sort_button_clicked)
@@ -74,11 +74,14 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 self.treeViewHVC.addTopLevelItem(item)
             elif loc == 'Area X':
                 self.treeViewAreaX.addTopLevelItem(item)
+            elif loc == 'angle':
+                self.treeViewAngle.addTopLevelItem(item)
 
         self.treeViewNCM.itemClicked.connect(self.clicked)
         self.treeViewFieldL.itemClicked.connect(self.clicked)
         self.treeViewHVC.itemClicked.connect(self.clicked)
         self.treeViewAreaX.itemClicked.connect(self.clicked)
+        self.treeViewAngle.itemClicked.connect(self.clicked)
 
         self.brainRegionComboBox.currentIndexChanged.connect(self.myfuncs.update_neuron_list)
         self.singleUnitCheckBox.stateChanged.connect(self.myfuncs.update_neuron_list)
@@ -89,6 +92,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.widthPlotButton.clicked.connect(self.plot_spike_width)
 
         self.labelButton.clicked.connect(self.myfuncs.curate_responses)
+        self.brainAreaLabel.clicked.connect(self.myfuncs.label_brain_area)
 
         # ===== SIGNALS =====
         signals.get_neuron_filters.connect(self.get_neuron_filters)
@@ -160,6 +164,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                         loc = 'Area X'
                     elif 'cm' in r.lower() or 'cmm' in r.lower():
                         loc = 'CM'
+                    elif 'angle' in r.lower():
+                        loc = 'angle'
                     else:
                         loc = None
 

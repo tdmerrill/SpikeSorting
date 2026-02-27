@@ -271,7 +271,7 @@ def get_log_file_and_stimulus_windows(root_dir, samplerate=30000):
     sample_time = ((recording.events.sample_number) - int(recording_start_time))/30000
 
     diffs = np.diff(sample_time)
-    mask = (diffs > 0.15) & (diffs < 7.5)  #filter between 0.15 and 5 seconds
+    mask = (diffs > 0.15) & (diffs < 4.9)  #filter between 0.15 and 5 seconds
     start_time = sample_time[:-1][mask].reset_index(drop=True)
     end_time = sample_time[1:][mask].reset_index(drop=True)
     durations = diffs[mask]

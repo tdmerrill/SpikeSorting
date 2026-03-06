@@ -6,6 +6,7 @@ from pathlib import Path
 files_to_backup = [
     r"C:\Users\tmerri03\Desktop\Temp Neural Files\neuron_labels.json",
     r"C:\Users\tmerri03\Desktop\Temp Neural Files\neurons.db",
+    r"C:\Users\tmerri03\Desktop\Temp Neural Files\HVC Response Strengths.json",
 ]
 
 backup_temp_folder = Path(r"C:\Users\tmerri03\Desktop\Temp Neural Files")

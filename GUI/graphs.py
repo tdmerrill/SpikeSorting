@@ -14,18 +14,32 @@ import spikeinterface.curation as sc
 
 #functions
 def get_good_neurons(db_path, single_units, isi_type, isi_cutoff, session_id):
+    """
+    Returns good neuron IDs sorted by unit_loc_y (dorsal → ventral).
+    Larger y = more dorsal → plotted higher.
+    """
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
 
-    if single_units=="True":
+    if single_units == "True":
         cursor.execute(f"""
-                SELECT unit_id
-                FROM neurons
-                WHERE {isi_type} < ? AND session_id = ? AND label = ?
-        """, (isi_cutoff,session_id, 'auditory'))
-        neurons = cursor.fetchall()
+            SELECT unit_id, unit_loc_y
+            FROM neurons
+            WHERE {isi_type} < ?
+              AND session_id = ?
+              AND label = ?
+              AND unit_loc_y IS NOT NULL
+            ORDER BY unit_loc_y DESC
+        """, (isi_cutoff, session_id, 'auditory'))
 
-        return [x[0] for x in np.array(neurons)]
+        results = cursor.fetchall()
+        conn.close()
+
+        # results already sorted dorsal (high y) to ventral (low y)
+        return [row[0] for row in results]
+
+    conn.close()
+    return []
 
 if __name__ == '__main__':
     # ---- get input information ----
@@ -297,6 +311,6 @@ if os.path.exists(os.path.join(temp_neural_files_path, recording_name)):
     ax.set_aspect('equal')
 
     # ax.invert_yaxis()
-    plt.savefig(fr"R:\Data\RhythmPerception\Neural Recordings\Raster Plots\{bird_id}\{brain_area}\{bird_id}_{brain_area}_rec{rec_num}_probe.png")
+    plt.savefig(fr"R:\Data\RhythmPerception\Neural Recordings\Raster Plots\{bird_id}\{brain_area}\{bird_id}_{brain_area}_rec{rec_num}_probe.svg", format='svg')
 else:
     print("cannot find local copy of pre-processed data. cannot plot probe.")
